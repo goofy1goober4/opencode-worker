@@ -48,8 +48,9 @@ The worker's report is not proof: verify `diff` and rerun your own checks.
 
 ## MCP
 
-Tools: `worker_start` (returns `jobId` immediately), `worker_status`, `worker_result`, `worker_cancel`.
-Async by design so long runs never hit client request timeouts.
+Tools: `worker_start` (returns `jobId` immediately), `worker_wait`, `worker_status`, `worker_result`, `worker_cancel`.
+
+Recommended flow: `worker_start` → `worker_wait` (repeat while it returns `status: "running"`). `worker_wait` blocks up to `timeoutSec` (default 50 s, max 120 s) and returns the full result once the job finishes, so clients don't burn model turns polling `worker_status`. The 50 s default stays under common 60 s client tool timeouts (e.g. Codex `tool_timeout_sec`).
 
 ```json
 {
