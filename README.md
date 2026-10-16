@@ -5,7 +5,8 @@ Run the official OpenCode CLI as an isolated, time-boxed worker. One package, tw
 - `opencode-worker run` — CLI, prints one JSON result
 - `opencode-worker mcp` — MCP stdio server (async jobs)
 
-No dependencies. Node ≥ 20. OpenCode is **not** bundled: pass `--opencode-bin`, set `OPENCODE_WORKER_BIN`, or have `opencode` on `PATH`.
+No dependencies. Node ≥ 20. OpenCode is **not** bundled: pass `--opencode-bin`, set `OPENCODE_WORKER_BIN`, or have `opencode` on `PATH` (checked in that order).
+A set-but-empty `--opencode-bin`/`OPENCODE_WORKER_BIN` fails with `BIN_EMPTY` instead of falling back to `PATH`; this usually means a shell variable was not expanded in your MCP config.
 
 ## Safety defaults
 
