@@ -12,13 +12,29 @@ A set-but-empty `--opencode-bin`/`OPENCODE_WORKER_BIN` fails with `BIN_EMPTY` in
 
 - Child env is rebuilt from scratch: only `PATH`, `LANG`, `LC_ALL`, `TMPDIR` pass through. No API keys or credentials.
 - `HOME` and `XDG_{CONFIG,DATA,CACHE,STATE}_HOME` point into `<dir>/.opencode-worker/`.
-- Generated config: `model` = `small_model` = requested model, `enabled_providers: ["opencode"]`, `permission.external_directory: "deny"`.
+- Generated config: `model` = `small_model` = requested model, `enabled_providers: ["opencode"]`.
+- Project config is ignored: `opencode.json`, `.opencode/` agents, plugins and MCP in the task dir are not loaded (`OPENCODE_DISABLE_PROJECT_CONFIG=1`, private `OPENCODE_CONFIG_DIR`). `AGENTS.md` still applies.
+- Tools are default-deny: only `read`, `list`, `glob`, `grep`, `edit` (incl. write/patch), `bash`, `todowrite`, `todoread` are allowed; `external_directory` is denied. No web fetch, no sub-agents.
 - Models outside the `opencode` provider are rejected (`PROVIDER_NOT_ALLOWED`); there is no fallback.
 - No job time limit by default: a job runs until it finishes, `worker_cancel`, or the MCP session closes — like a subagent. Opt in to a limit with `OPENCODE_WORKER_TIMEOUT_SEC` (per install) or `--timeout` / `worker_start.timeoutSec` (per job); on expiry: SIGTERM, then SIGKILL after 5 s, plus an `alarm()` 10 s later that fires even if this process died.
 - Cancel and timeout stop the whole process tree: opencode plus every command it spawned (tool shells run in their own process groups, so the tree is walked by parent pid).
 - Fixed flags: `run --pure --auto --format json --agent <agent> --model <model> --variant <variant>`.
 
 Defaults: model `opencode/deepseek-v4.1-flash-free`, variant `low`, agent `build`.
+
+## Reasoning
+
+`--variant` / `worker_start.variant` selects reasoning effort. Valid values are the model's own variants (read from `opencode models`) plus `none`:
+
+| variant | effect |
+|---|---|
+| `none` | reasoning off (added by opencode-worker as `reasoningEffort: "none"`) |
+| `low` (default) | light reasoning |
+| `high` | more reasoning |
+| `max` | most reasoning |
+
+Unknown values (e.g. `medium`, which this model does not define) fail with `BAD_VARIANT` instead of silently using the provider default.
+On short tasks the difference is small: in our runs `low`/`high`/`max` averaged roughly 30/45/70 reasoning tokens and `none` produced 0, with the same answers.
 
 ## CLI
 
@@ -96,6 +112,8 @@ Closing stdin or SIGINT/SIGTERM/SIGHUP cancels running jobs and records them as 
 
 - `<dir>/.opencode-worker/` holds state, snapshots and logs per run; delete it when done.
 - The before-snapshot copies the whole directory: use small, task-scoped directories.
+- Parallel jobs are allowed but share the free endpoint and your CPU: with 6 concurrent jobs a ~10 s task took up to ~30 s. Run a few at a time.
+- Two jobs writing the same `dir` at once will overwrite each other's files and snapshots; give each job its own directory.
 
 ## Releasing
 
