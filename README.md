@@ -69,7 +69,7 @@ Exit codes: `0` ok, `1` worker failed (timeout, nonzero exit, error event, model
 | `opencode` | `{bin, version}` |
 | `requested` | `{model, variant, agent, timeoutSec}` |
 | `actual` | provider/model/variant recorded in the isolated session DB (needs `sqlite3`; `null` if unavailable) |
-| `text` | worker's final text |
+| `text` | worker's final answer: the text after its last tool call, without narration like "I'll read the file." (all text, joined by blank lines, if nothing follows the last tool call). Safe to paste into the next job's prompt; workers never see each other's results otherwise |
 | `tools[]` | `{tool, status, input, exit, output, error}` per tool call; `exit` is the bash exit code (else `null`), `output` capped at 4000 chars |
 | `cost`, `tokens` | summed from `step_finish` events |
 | `diff` | unified diff of `<dir>` before vs after. Excludes `.opencode-worker/` and tool caches (`__pycache__`, `*.pyc`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.cache`); the worker also runs with `PYTHONDONTWRITEBYTECODE=1`, so test runs don't show up as changes |
