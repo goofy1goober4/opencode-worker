@@ -1,11 +1,22 @@
 {
   "name": "opencode-worker",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Run the official OpenCode CLI as an isolated, time-boxed worker. CLI + MCP stdio server.",
-  "repository": { "type": "git", "url": "git+https://github.com/goofy1goober4/opencode-worker.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/goofy1goober4/opencode-worker.git"
+  },
   "type": "module",
-  "bin": { "opencode-worker": "bin/opencode-worker.mjs" },
-  "files": ["bin", "lib", "README.md"],
-  "engines": { "node": ">=20" },
+  "bin": {
+    "opencode-worker": "bin/opencode-worker.mjs"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "license": "MIT"
 }
