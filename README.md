@@ -72,7 +72,7 @@ Exit codes: `0` ok, `1` worker failed (timeout, nonzero exit, error event, model
 | `text` | worker's final text |
 | `tools[]` | `{tool, status, input, exit, output, error}` per tool call; `exit` is the bash exit code (else `null`), `output` capped at 4000 chars |
 | `cost`, `tokens` | summed from `step_finish` events |
-| `diff` | `diff -ruN` of `<dir>` before vs after (excludes `.opencode-worker/`) |
+| `diff` | unified diff of `<dir>` before vs after. Excludes `.opencode-worker/` and tool caches (`__pycache__`, `*.pyc`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.cache`); the worker also runs with `PYTHONDONTWRITEBYTECODE=1`, so test runs don't show up as changes |
 | `errors[]` | `timeout`, `cancelled`, `nonzero_exit`, `event_error`, `model_mismatch`, `diff_failed`, `unparsed_line` |
 | `artifacts` | raw `events.jsonl` and `stderr.txt` under `<dir>/.opencode-worker/runs/<id>/` |
 
@@ -116,6 +116,8 @@ args = ["-y", "opencode-worker", "mcp"]
 env = { OPENCODE_WORKER_BIN = "/path/to/opencode" }
 default_tools_approval_mode = "approve"
 ```
+
+Codex does not read a project-level `.codex/config.toml`. To enable the worker only when needed, put the same block in a profile file `~/.codex/ocw.config.toml` and start Codex with `codex -p ocw`.
 
 OMP (`.omp/mcp.json` or `~/.omp/agent/mcp.json`): the JSON above with `"type": "stdio"`. Non-interactive: `omp -p --auto-approve "…"`.
 
