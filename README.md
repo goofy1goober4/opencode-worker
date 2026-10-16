@@ -14,7 +14,7 @@ A set-but-empty `--opencode-bin`/`OPENCODE_WORKER_BIN` fails with `BIN_EMPTY` in
 - `HOME` and `XDG_{CONFIG,DATA,CACHE,STATE}_HOME` point into `<dir>/.opencode-worker/`.
 - Generated config: `model` = `small_model` = requested model, `enabled_providers: ["opencode"]`, `permission.external_directory: "deny"`.
 - Models outside the `opencode` provider are rejected (`PROVIDER_NOT_ALLOWED`); there is no fallback.
-- Timeout (default 180 s): SIGTERM, then SIGKILL after 5 s.
+- Job timeout: default 900 s (15 min). Set it once per install with `OPENCODE_WORKER_TIMEOUT_SEC` (CLI and MCP server), or per job with `--timeout` / `worker_start.timeoutSec`. On expiry: SIGTERM, then SIGKILL after 5 s; an `alarm()` 10 s later also kills the worker if this process itself died.
 - Fixed flags: `run --pure --auto --format json --agent <agent> --model <model> --variant <variant>`.
 
 Defaults: model `opencode/deepseek-v4.1-flash-free`, variant `low`, agent `build`.
@@ -22,8 +22,9 @@ Defaults: model `opencode/deepseek-v4.1-flash-free`, variant `low`, agent `build
 ## CLI
 
 ```sh
-opencode-worker run --dir ./task --timeout 180 "Fix add() in calculator.py and run the tests"
-opencode-worker run --dir ./task -f prompt.md --variant high
+opencode-worker run --dir ./task "Fix add() in calculator.py and run the tests"
+opencode-worker run --dir ./task --timeout 1800 -f prompt.md --variant high
+OPENCODE_WORKER_TIMEOUT_SEC=1800 opencode-worker run --dir ./task "…"
 ```
 
 Exit codes: `0` ok, `1` worker failed (timeout, nonzero exit, error event, model mismatch), `2` usage/setup error.
@@ -58,19 +59,21 @@ Recommended flow: `worker_start` → `worker_wait` (repeat while it returns `sta
     "opencode-worker": {
       "command": "npx",
       "args": ["-y", "opencode-worker", "mcp"],
-      "env": { "OPENCODE_WORKER_BIN": "/path/to/opencode" }
+      "env": { "OPENCODE_WORKER_BIN": "/path/to/opencode", "OPENCODE_WORKER_TIMEOUT_SEC": "1800" }
     }
   }
 }
 ```
+
+`OPENCODE_WORKER_TIMEOUT_SEC` is optional (default 900); it is the job limit, independent of the per-call `worker_wait` limit.
 
 ### Client setup
 
 Claude Code (tools must be allowed in `-p` mode; put the prompt right after `-p`, because `--allowedTools` and `--mcp-config` are variadic and swallow trailing arguments):
 
 ```sh
-claude mcp add opencode-worker -e OPENCODE_WORKER_BIN=/path/to/opencode -- npx -y opencode-worker mcp
-claude -p "…" --allowedTools "mcp__opencode-worker__worker_start,mcp__opencode-worker__worker_status,mcp__opencode-worker__worker_result"
+claude mcp add opencode-worker -e OPENCODE_WORKER_BIN=/path/to/opencode -e OPENCODE_WORKER_TIMEOUT_SEC=1800 -- npx -y opencode-worker mcp
+claude -p "…" --allowedTools "mcp__opencode-worker__worker_start,mcp__opencode-worker__worker_wait,mcp__opencode-worker__worker_status,mcp__opencode-worker__worker_result"
 ```
 
 Codex (`~/.codex/config.toml`); without the approval mode, `codex exec` rejects MCP calls under `approval: never`:
@@ -79,7 +82,7 @@ Codex (`~/.codex/config.toml`); without the approval mode, `codex exec` rejects 
 [mcp_servers.opencode-worker]
 command = "npx"
 args = ["-y", "opencode-worker", "mcp"]
-env = { OPENCODE_WORKER_BIN = "/path/to/opencode" }
+env = { OPENCODE_WORKER_BIN = "/path/to/opencode", OPENCODE_WORKER_TIMEOUT_SEC = "1800" }
 default_tools_approval_mode = "approve"
 ```
 
