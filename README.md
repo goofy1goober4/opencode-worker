@@ -14,7 +14,8 @@ A set-but-empty `--opencode-bin`/`OPENCODE_WORKER_BIN` fails with `BIN_EMPTY` in
 - `HOME` and `XDG_{CONFIG,DATA,CACHE,STATE}_HOME` point into `<dir>/.opencode-worker/`.
 - Generated config: `model` = `small_model` = requested model, `enabled_providers: ["opencode"]`, `permission.external_directory: "deny"`.
 - Models outside the `opencode` provider are rejected (`PROVIDER_NOT_ALLOWED`); there is no fallback.
-- Job timeout: default 900 s (15 min). Set it once per install with `OPENCODE_WORKER_TIMEOUT_SEC` (CLI and MCP server), or per job with `--timeout` / `worker_start.timeoutSec`. On expiry: SIGTERM, then SIGKILL after 5 s; an `alarm()` 10 s later also kills the worker if this process itself died.
+- No job time limit by default: a job runs until it finishes, `worker_cancel`, or the MCP session closes — like a subagent. Opt in to a limit with `OPENCODE_WORKER_TIMEOUT_SEC` (per install) or `--timeout` / `worker_start.timeoutSec` (per job); on expiry: SIGTERM, then SIGKILL after 5 s, plus an `alarm()` 10 s later that fires even if this process died.
+- Cancel and timeout stop the whole process tree: opencode plus every command it spawned (tool shells run in their own process groups, so the tree is walked by parent pid).
 - Fixed flags: `run --pure --auto --format json --agent <agent> --model <model> --variant <variant>`.
 
 Defaults: model `opencode/deepseek-v4.1-flash-free`, variant `low`, agent `build`.
@@ -59,20 +60,20 @@ Recommended flow: `worker_start` → `worker_wait` (repeat while it returns `sta
     "opencode-worker": {
       "command": "npx",
       "args": ["-y", "opencode-worker", "mcp"],
-      "env": { "OPENCODE_WORKER_BIN": "/path/to/opencode", "OPENCODE_WORKER_TIMEOUT_SEC": "1800" }
+      "env": { "OPENCODE_WORKER_BIN": "/path/to/opencode" }
     }
   }
 }
 ```
 
-`OPENCODE_WORKER_TIMEOUT_SEC` is optional (default 900); it is the job limit, independent of the per-call `worker_wait` limit.
+Optional: `"OPENCODE_WORKER_TIMEOUT_SEC": "1800"` in `env` caps every job; omit it for no limit. It is independent of the per-call `worker_wait` limit.
 
 ### Client setup
 
 Claude Code (tools must be allowed in `-p` mode; put the prompt right after `-p`, because `--allowedTools` and `--mcp-config` are variadic and swallow trailing arguments):
 
 ```sh
-claude mcp add opencode-worker -e OPENCODE_WORKER_BIN=/path/to/opencode -e OPENCODE_WORKER_TIMEOUT_SEC=1800 -- npx -y opencode-worker mcp
+claude mcp add opencode-worker -e OPENCODE_WORKER_BIN=/path/to/opencode -- npx -y opencode-worker mcp
 claude -p "…" --allowedTools "mcp__opencode-worker__worker_start,mcp__opencode-worker__worker_wait,mcp__opencode-worker__worker_status,mcp__opencode-worker__worker_result"
 ```
 
@@ -82,14 +83,14 @@ Codex (`~/.codex/config.toml`); without the approval mode, `codex exec` rejects 
 [mcp_servers.opencode-worker]
 command = "npx"
 args = ["-y", "opencode-worker", "mcp"]
-env = { OPENCODE_WORKER_BIN = "/path/to/opencode", OPENCODE_WORKER_TIMEOUT_SEC = "1800" }
+env = { OPENCODE_WORKER_BIN = "/path/to/opencode" }
 default_tools_approval_mode = "approve"
 ```
 
 OMP (`.omp/mcp.json` or `~/.omp/agent/mcp.json`): the JSON above with `"type": "stdio"`. Non-interactive: `omp -p --auto-approve "…"`.
 
 Job records are written to `$OPENCODE_WORKER_STATE_DIR` (default `$XDG_STATE_HOME/opencode-worker/jobs`, else `~/.local/state/opencode-worker/jobs`), so `worker_status`/`worker_result` work after a server or client restart.
-Closing stdin or SIGINT/SIGTERM/SIGHUP cancels running jobs and records them as `cancelled`. If the server is killed outright, its unfinished jobs report `lost`; raw logs remain in `<dir>/.opencode-worker/runs/`.
+Closing stdin or SIGINT/SIGTERM/SIGHUP cancels running jobs and records them as `cancelled`. If the server is killed outright (crash, SIGKILL), a restarted server reports its unfinished jobs as `orphaned` when the recorded worker pid is still that opencode binary (stop it with `worker_cancel`), else `lost`. Events and stderr are streamed to `<dir>/.opencode-worker/runs/<id>/` while the job runs, so partial logs survive either way.
 
 ## Notes
 

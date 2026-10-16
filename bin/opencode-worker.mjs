@@ -13,7 +13,7 @@ Options (run):
   --model <id>           default ${DEFAULTS.model} (provider must be one of ${DEFAULTS.providers.join(",")})
   --variant <v>          default ${DEFAULTS.variant}
   --agent <name>         default ${DEFAULTS.agent}
-  --timeout <sec>        default $OPENCODE_WORKER_TIMEOUT_SEC, else ${DEFAULTS.timeoutSec}
+  --timeout <sec>        optional job time limit (default $OPENCODE_WORKER_TIMEOUT_SEC, else none)
   --opencode-bin <path>  default $OPENCODE_WORKER_BIN, then PATH
   -f, --prompt-file <f>  Read prompt from file
 
