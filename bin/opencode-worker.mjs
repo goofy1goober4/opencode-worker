@@ -11,7 +11,8 @@ const USAGE = `Usage:
 Options (run):
   --dir <dir>            Working directory; the worker is confined to it (required)
   --model <id>           default ${DEFAULTS.model} (provider must be one of ${DEFAULTS.providers.join(",")})
-  --variant <v>          default ${DEFAULTS.variant}
+  --variant <v>          reasoning: none | low | high | max (default ${DEFAULTS.variant})
+  --role <role>          implementer (default) | tester | reviewer
   --agent <name>         default ${DEFAULTS.agent}
   --timeout <sec>        optional job time limit (default $OPENCODE_WORKER_TIMEOUT_SEC, else none)
   --opencode-bin <path>  default $OPENCODE_WORKER_BIN, then PATH
@@ -27,7 +28,7 @@ try {
       allowPositionals: true,
       options: {
         dir: { type: "string" }, model: { type: "string" }, variant: { type: "string" },
-        agent: { type: "string" }, timeout: { type: "string" }, "opencode-bin": { type: "string" },
+        agent: { type: "string" }, role: { type: "string" }, timeout: { type: "string" }, "opencode-bin": { type: "string" },
         "prompt-file": { type: "string", short: "f" },
       },
     });
@@ -36,7 +37,7 @@ try {
     const timeoutSec = values.timeout === undefined ? undefined : Number(values.timeout);
     if (timeoutSec !== undefined && !(timeoutSec > 0)) throw new WorkerError("BAD_ARGS", "--timeout must be a positive number");
     const result = await runWorker({
-      dir: values.dir, prompt, model: values.model, variant: values.variant, agent: values.agent,
+      dir: values.dir, prompt, model: values.model, variant: values.variant, agent: values.agent, role: values.role,
       timeoutSec, opencodeBin: values["opencode-bin"],
     });
     process.stdout.write(JSON.stringify(result, null, 2) + "\n");
