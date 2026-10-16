@@ -1,0 +1,26 @@
+name: Publish to npm
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write # OIDC token for npm Trusted Publishing; no NPM_TOKEN secret
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24 # npm >= 11.5.1 is required for Trusted Publishing
+          registry-url: https://registry.npmjs.org
+      - name: Check tag matches package.json version
+        run: |
+          v="$(node -p 'require("./package.json").version')"
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != package.json v$v"; exit 1; }
+      - name: Smoke check
+        run: node bin/opencode-worker.mjs --help
+      - run: npm publish --access public
