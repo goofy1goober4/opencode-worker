@@ -128,7 +128,7 @@ Closing stdin or SIGINT/SIGTERM/SIGHUP cancels running jobs and records them as 
 
 - `<dir>/.opencode-worker/` holds state, snapshots and logs per run; delete it when done.
 - The before-snapshot copies the whole directory: use small, task-scoped directories.
-- Parallel jobs are allowed but share the free endpoint and your CPU: with 6 concurrent jobs a ~10 s task took up to ~30 s. Run a few at a time.
+- Parallel jobs are allowed but share the free endpoint and your CPU: with 6 concurrent jobs a ~10 s task took up to ~30 s. Start with 1–3 concurrent workers.
 - Give each parallel implementer its own `dir` (e.g. a git worktree per task); same-dir starts get `DIR_BUSY`.
 
 ## Releasing
